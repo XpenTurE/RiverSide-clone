@@ -46,5 +46,7 @@ jspm_packages/
 # Optional npm cache directory
 .npm
 
+test.mp4
+
 # Optional eslint cache
 .eslintcache
