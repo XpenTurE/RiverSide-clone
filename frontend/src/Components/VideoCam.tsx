@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { io, Socket } from 'socket.io-client';
 
-const socket: Socket = io('http://localhost:8000/');
+const socket: Socket = io('http://localhost:8000/');    
 
 const VideoCam = () => {
     const localVideoRef = useRef<HTMLVideoElement>(null)
@@ -14,7 +14,6 @@ const VideoCam = () => {
     useEffect(()=>{
         const initWebRTC = async()=>{
             try{
-
                 const localStream = await navigator.mediaDevices.getUserMedia({
                     audio:true,
                     video: { width: 1920, height: 1080 },
@@ -24,7 +23,6 @@ const VideoCam = () => {
                     localVideoRef.current.srcObject = localStream
                 }
                 setLocalStream(localStream) 
-                // socket.emit('video_chunk',"testing scoket");
 
             }
             catch(err){
@@ -36,14 +34,22 @@ const VideoCam = () => {
 
     const handleStartRecording = ()=>{
         if(stream){
-            const recorder = new MediaRecorder(stream)
+            const recorder:MediaRecorder = new MediaRecorder(stream)
             mediaRecorderRef.current = recorder
             const chunks :Blob[] = []
-            recorder.ondataavailable = async (e)=>{
-                console.log(e)
-                if(e.data.size >0){
-                    chunks.push(e.data)
-                    socket.emit('video_chunk', e.data);
+        
+            socket.emit('recording_start');
+            
+            recorder.ondataavailable = async (event)=>{
+                console.log(event)
+                if(event.data.size > 0){
+                    chunks.push(event.data)
+                
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        socket.emit('video_chunk', reader.result);
+                    };
+                    reader.readAsArrayBuffer(event.data);
                 }
             }
 
@@ -53,17 +59,18 @@ const VideoCam = () => {
                 const url = URL.createObjectURL(blob)
                 const a = document.createElement("a")
                 a.href = url
-                // a.download = 'recording1.webm'
-                // a.click()
+                a.download = 'recording1.webm'
+                a.click()
+                
+                socket.emit('recording_end');
             }
 
-            recorder.start(4000)
+            recorder.start(1000)
             if(startButtonRef.current)startButtonRef.current.disabled = true
             if(stopButtonRef.current)stopButtonRef.current.disabled = false
             console.log('recording start..')
         }
     }
-
 
     const handleStopRecording = ()=>{
         if(mediaRecorderRef.current){
